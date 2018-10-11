@@ -6,30 +6,49 @@ import (
 	"runtime"
 )
 
+// OnCall declares that 'obj' method 'f' can be called with 'args' during the test.
+// If 'args' are not specified 'f' can be called with any input parameters.
+// The mocked function will return default constructed values in case of output parameters
+// are not specified via Returner.Return method
 func OnCall(obj interface{}, f interface{}, args ...interface{}) Returner {
 	return getCore(obj).onCall(obj, f, args...)
 }
 
+// ExpectCall declares that 'obj' method 'f' must be called with 'args' during the test.
+// If 'args' are not specified 'f' can be called with any input parameters.
+// The mocked function will return default constructed values in case of output parameters
+// are not specified via Returner.Return method
+// Note that ExpectCall also sets the expected order of declared calls
 func ExpectCall(obj interface{}, f interface{}, args ...interface{}) Returner {
 	return getCore(obj).expectCall(obj, f, args...)
 }
 
+// Call perfoms a call of 'obj' method 'f' with input parameters 'args'
+// This function should be used for mocking methods implementation.
+// Pass named output parameters by reference. E.g ...Return(&out1, &out2)
 func Call(obj interface{}, f interface{}, args ...interface{}) Returner {
 	return getCore(obj).call(obj, f, args...)
 }
 
+// Returner specifies ouput parameters in case of OnCall/ExpectCall usage
+// or assins ouput parameters in case of Call usage
 type Returner interface {
 	Return(out ...interface{})
 }
 
+// Core is the mocking engine. Declare it as first unnamed member of your mock structure.
+// CheckExpectations should be called at the end of the test case. It checks that earlier
+// declared via ExpectCall methods are realy called during the test
 type Core interface {
 	CheckExpectations()
 }
 
+// New creates mock.Core for the given *testing.T
 func New(t TestingT) Core {
 	return &core{t: t}
 }
 
+// TestingT is a ligth interface of testing.T. Is required for mock package been testable
 type TestingT interface {
 	Fatalf(format string, args ...interface{})
 }
@@ -71,36 +90,36 @@ type call struct {
 	decl *callDeclaration
 }
 
-func (m *core) onCall(obj interface{}, f interface{}, args ...interface{}) Returner {
+func (c *core) onCall(obj interface{}, f interface{}, args ...interface{}) Returner {
 	validateCall(obj, f, args, true)
-	c := &callDeclaration{obj: obj, fID: getFuncID(f), args: args}
-	m.calls = append(m.calls, c)
-	return c
+	cd := &callDeclaration{obj: obj, fID: getFuncID(f), args: args}
+	c.calls = append(c.calls, cd)
+	return cd
 }
 
-func (m *core) expectCall(obj interface{}, f interface{}, args ...interface{}) Returner {
+func (c *core) expectCall(obj interface{}, f interface{}, args ...interface{}) Returner {
 	validateCall(obj, f, args, true)
-	c := &expectedCallDeclaration{
+	ecd := &expectedCallDeclaration{
 		callDeclaration{obj: obj, fID: getFuncID(f), args: args},
 		false,
 	}
-	m.expCalls = append(m.expCalls, c)
-	return c
+	c.expCalls = append(c.expCalls, ecd)
+	return ecd
 }
 
-func (m *core) call(obj interface{}, f interface{}, args ...interface{}) Returner {
+func (c *core) call(obj interface{}, f interface{}, args ...interface{}) Returner {
 	validateCall(obj, f, args, false)
 
 	fID := getFuncID(f)
-	for i, exp := range m.expCalls {
+	for i, exp := range c.expCalls {
 		if exp.used || !exp.satisfied(obj, fID, args) {
 			continue
 		}
 
-		if i != 0 && !m.expCalls[i-1].used {
-			for _, exp := range m.expCalls {
+		if i != 0 && !c.expCalls[i-1].used {
+			for _, exp := range c.expCalls {
 				if !exp.used {
-					m.t.Fatalf("'%s' must be called before '%s'", exp.fID, fID)
+					c.t.Fatalf(`"%s" must be called before "%s"`, exp.fID, fID)
 					return &call{nil}
 				}
 			}
@@ -110,37 +129,37 @@ func (m *core) call(obj interface{}, f interface{}, args ...interface{}) Returne
 		return &call{&exp.callDeclaration}
 	}
 
-	for _, c := range m.calls {
-		if c.satisfied(obj, fID, args) {
-			return &call{c}
+	for _, cd := range c.calls {
+		if cd.satisfied(obj, fID, args) {
+			return &call{cd}
 		}
 	}
 
-	m.t.Fatalf("'%s' is called but not defined", fID)
+	c.t.Fatalf(`"%s" is called but not defined`, fID)
 	return &call{nil}
 }
 
-func (m *core) CheckExpectations() {
-	for _, exp := range m.expCalls {
+func (c *core) CheckExpectations() {
+	for _, exp := range c.expCalls {
 		if !exp.used {
-			m.t.Fatalf("'%s' is expected but not called", exp.fID)
+			c.t.Fatalf(`"%s" is expected but not called`, exp.fID)
 			return
 		}
 	}
 }
 
-func (c *callDeclaration) Return(out ...interface{}) {
-	if len(out) != c.fID.fType.NumOut() {
-		panic(fmt.Sprintf("Invalid '%s' call declaration: out parameters count must be %d", c.fID, c.fID.fType.NumOut()))
+func (cd *callDeclaration) Return(out ...interface{}) {
+	if len(out) != cd.fID.fType.NumOut() {
+		panic(fmt.Sprintf(`Invalid "%s" declaration: out parameters count must be %d`, cd.fID, cd.fID.fType.NumOut()))
 	}
 
 	for i, gotOut := range out {
-		if err := validateFuncParam(c.fID.fType.Out(i), gotOut); err != nil {
-			panic(fmt.Sprintf("Invalid '%s' call out parameters declaration: %s", c.fID, err.Error()))
+		if err := validateFuncParam(cd.fID.fType.Out(i), gotOut); err != nil {
+			panic(fmt.Sprintf(`Invalid "%s" out parameters declaration: %s`, cd.fID, err.Error()))
 		}
 	}
 
-	c.out = append(c.out, out...)
+	cd.out = append(cd.out, out...)
 }
 
 func validateFuncParam(paramType reflect.Type, paramValue interface{}) error {
@@ -153,8 +172,8 @@ func validateFuncParam(paramType reflect.Type, paramValue interface{}) error {
 	}
 
 	gotParamType := reflect.TypeOf(paramValue)
-	if !gotParamType.AssignableTo(paramType) {
-		return fmt.Errorf("Type %s is not assignable to type %s", gotParamType, paramType)
+	if !gotParamType.AssignableTo(paramType) && !gotParamType.ConvertibleTo(paramType) {
+		return fmt.Errorf("Type %s is neither assignable not converible to type %s", gotParamType, paramType)
 	}
 
 	return nil
@@ -162,11 +181,11 @@ func validateFuncParam(paramType reflect.Type, paramValue interface{}) error {
 
 func (c *call) Return(out ...interface{}) {
 	if c.decl == nil {
-		return // for the tests
+		return // for internal tests
 	}
 
 	if len(out) != c.decl.fID.fType.NumOut() {
-		panic(fmt.Sprintf("Invalid '%s' call: out parameters ptrs count must be %d", c.decl.fID, c.decl.fID.fType.NumOut()))
+		panic(fmt.Sprintf(`Invalid "%s" call: out parameters ptrs count must be %d`, c.decl.fID, c.decl.fID.fType.NumOut()))
 	}
 
 	if c.decl.out == nil {
@@ -192,7 +211,7 @@ func validateCall(obj interface{}, f interface{}, args []interface{}, optionalAr
 	}
 
 	if fType.NumIn() < 1 || !objVal.Type().AssignableTo(fType.In(0)) {
-		panic("f must an interface method of obj")
+		panic("f must be an interface method of obj")
 	}
 
 	if optionalArgs && args == nil {
@@ -200,12 +219,12 @@ func validateCall(obj interface{}, f interface{}, args []interface{}, optionalAr
 	}
 
 	if fType.NumIn()-1 != len(args) {
-		panic(fmt.Sprintf("Invalid '%s' call declaration: in parameters count must be %d", fName(f), fType.NumIn()-1))
+		panic(fmt.Sprintf(`Invalid "%s" in parameters coun. Must be %d`, fName(f), fType.NumIn()-1))
 	}
 
 	for i, arg := range args {
 		if err := validateFuncParam(fType.In(i+1), arg); err != nil {
-			panic(fmt.Sprintf("Invalid '%s' call in parameters declaration: %s", fName(f), err.Error()))
+			panic(fmt.Sprintf(`Invalid "%s" in parameters: %s`, fName(f), err.Error()))
 		}
 	}
 }

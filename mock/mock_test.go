@@ -15,12 +15,21 @@ type myInterface interface {
 	doSmth2() myType
 }
 
-type myInterface2 interface {
-	doSmth3(int) (*myType, error)
-}
-
 type myObj struct {
 	Core
+}
+
+type myInterface2 interface {
+	doSmth3(int64) (*myType, error)
+}
+
+type myObj2 struct {
+	Core
+}
+
+func (obj *myObj2) doSmth3(arg int64) (v *myType, err error) {
+	Call(obj, myInterface2.doSmth3, arg).Return(&v, &err)
+	return
 }
 
 func (obj *myObj) doSmth(arg int) (v *myType, err error) {
@@ -299,6 +308,14 @@ func TestNonObjFuncDeclaration(t *testing.T) {
 	obj := &myObj{m}
 
 	OnCall(obj, myInterface2.doSmth3)
+}
+
+func TestInParansConversions(t *testing.T) {
+	tm := new(tmock)
+	m := New(tm)
+	obj := &myObj2{m}
+
+	OnCall(obj, myInterface2.doSmth3, 1)
 }
 
 func expectPanic(t *testing.T) {
