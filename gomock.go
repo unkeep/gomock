@@ -22,23 +22,16 @@ import (
 	_ "github.com/unkeep/gomock/mock"
 )
 
-const usage = `impl [-dir directory] <recv> <iface>
+const usage = `gomock <iface>
 
-impl generates method stubs for recv to implement iface.
+gomock generates mocks for the given iface.
 
 Examples:
 
-impl 'f *File' io.Reader
-impl Murmur hash.Hash
-impl -dir $GOPATH/src/github.com/josharian/impl Murmur hash.Hash
-
-Don't forget the single quotes around the receiver type
-to prevent shell globbing.
+gomock io.Reader
+gomock somepkg.SomeInterface
+gomock github.com/unkeep/somepkg.SomeInterface
 `
-
-var (
-	flagSrcDir = flag.String("dir", "", "package source directory, useful for vendored code")
-)
 
 // findInterface returns the import path and identifier of an interface.
 // For example, given "http.ResponseWriter", findInterface returns
@@ -309,10 +302,7 @@ func getIfaceShort(iface string) string {
 	return tokens[len(tokens)-1]
 }
 
-// genMock prints nicely formatted method stubs
-// for fns using receiver expression recv.
-// If recv is not a valid receiver expression,
-// genMock will panic.
+// genMock prints nicely formatted mock implementation
 func genMock(iface string, fns []Func) []byte {
 	var buf bytes.Buffer
 	tmplData := mockTmplData{
@@ -327,8 +317,6 @@ func genMock(iface string, fns []Func) []byte {
 		panic(err)
 	}
 	return pretty
-
-	// return buf.Bytes()
 }
 
 func addParamNames(f *Func) {
@@ -345,38 +333,19 @@ func addParamNames(f *Func) {
 	}
 }
 
-// validReceiver reports whether recv is a valid receiver expression.
-func validReceiver(recv string) bool {
-	if recv == "" {
-		// The parse will parse empty receivers, but we don't want to accept them,
-		// since it won't generate a usable code snippet.
-		return false
-	}
-	fset := token.NewFileSet()
-	_, err := parser.ParseFile(fset, "", "package hack\nfunc ("+recv+") Foo()", 0)
-	return err == nil
-}
-
 func main() {
 	flag.Parse()
 
-	if len(flag.Args()) < 2 {
+	if len(flag.Args()) < 1 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
 
-	recv, iface := flag.Arg(0), flag.Arg(1)
-	if !validReceiver(recv) {
-		fatal(fmt.Sprintf("invalid receiver: %q", recv))
-	}
+	iface := flag.Arg(0)
 
-	if *flagSrcDir == "" {
-		if dir, err := os.Getwd(); err == nil {
-			*flagSrcDir = dir
-		}
-	}
+	wdir, _ := os.Getwd()
 
-	fns, err := funcs(iface, *flagSrcDir)
+	fns, err := funcs(iface, wdir)
 	if err != nil {
 		fatal(err)
 	}
