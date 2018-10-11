@@ -51,17 +51,11 @@ func (t *tmock) Fatalf(format string, args ...interface{}) {
 }
 
 func TestOnCallBase(t *testing.T) {
-	tm := new(tmock)
-	m := New(tm)
-	obj := myInterface(&myObj{m})
+	obj := myInterface(&myObj{New(t)})
 
 	OnCall(obj, myInterface.doSmth)
 
 	v, err := obj.doSmth(123)
-
-	if tm.fail {
-		t.Fatal("tm.fail")
-	}
 
 	if v != nil {
 		t.Fatal("v != nil")
@@ -73,19 +67,13 @@ func TestOnCallBase(t *testing.T) {
 }
 
 func TestOnCallWithArgsAndReturn(t *testing.T) {
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
+	obj := &myObj{New(t)}
 
 	out1 := &myType{"data"}
 	out2 := fmt.Errorf("error")
 	OnCall(obj, myInterface.doSmth, 123).Return(out1, out2)
 
 	v, err := obj.doSmth(123)
-
-	if tm.fail {
-		t.Fatal("tm.fail")
-	}
 
 	if !reflect.DeepEqual(v, out1) {
 		t.Fatal("!reflect.DeepEqual(v, out1)")
@@ -133,17 +121,11 @@ func TestOnCallWithInvalidArgs(t *testing.T) {
 }
 
 func TestOnCallWithNillReturn(t *testing.T) {
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
+	obj := &myObj{New(t)}
 
 	OnCall(obj, myInterface.doSmth).Return(nil, nil)
 
 	v, err := obj.doSmth(123)
-
-	if tm.fail {
-		t.Fatal("tm.fail")
-	}
 
 	if v != nil {
 		t.Fatal("v != nil")
@@ -155,17 +137,11 @@ func TestOnCallWithNillReturn(t *testing.T) {
 }
 
 func TestOnCallWithNonPtrReturn(t *testing.T) {
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
+	obj := &myObj{New(t)}
 
 	OnCall(obj, myInterface.doSmth2).Return(myType{"data"})
 
 	v := obj.doSmth2()
-
-	if tm.fail {
-		t.Fatal("tm.fail")
-	}
 
 	if !reflect.DeepEqual(v, myType{"data"}) {
 		t.Fatal(`!reflect.DeepEqual(v, myType{"data"})`)
@@ -173,8 +149,7 @@ func TestOnCallWithNonPtrReturn(t *testing.T) {
 }
 
 func TestExpectCall(t *testing.T) {
-	tm := new(tmock)
-	m := New(tm)
+	m := New(t)
 	obj := &myObj{m}
 
 	ExpectCall(obj, myInterface.doSmth2).Return(myType{"data"})
@@ -182,10 +157,6 @@ func TestExpectCall(t *testing.T) {
 	v := obj.doSmth2()
 
 	m.CheckExpectations()
-
-	if tm.fail {
-		t.Fatal("tm.fail")
-	}
 
 	if !reflect.DeepEqual(v, myType{"data"}) {
 		t.Fatal(`!reflect.DeepEqual(v, myType{"data"})`)
@@ -226,61 +197,38 @@ func TestCheckExpectations(t *testing.T) {
 
 func TestInvalidOutParamsCountDeclaration(t *testing.T) {
 	defer expectPanic(t)
-
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
-
+	obj := &myObj{New(t)}
 	OnCall(obj, myInterface.doSmth2).Return(myType{}, myType{})
 }
 
 func TestInvalidOutParamTypeDeclaration(t *testing.T) {
 	defer expectPanic(t)
-
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
-
+	obj := &myObj{New(t)}
 	OnCall(obj, myInterface.doSmth2).Return(&myType{})
 }
 
 func TestInvalidNilOutParamTypeDeclaration(t *testing.T) {
 	defer expectPanic(t)
-
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
-
+	obj := &myObj{New(t)}
 	OnCall(obj, myInterface.doSmth2).Return(nil)
 }
 
 func TestInvalidOutParamCountCall(t *testing.T) {
 	defer expectPanic(t)
-
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
+	obj := &myObj{New(t)}
 	OnCall(obj, myInterface.doSmth2).Return(myType{})
 	Call(obj, myInterface.doSmth2).Return(myType{}, myType{})
 }
 
 func TestInvalidInParamsCountDeclaration(t *testing.T) {
 	defer expectPanic(t)
-
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
-
+	obj := &myObj{New(t)}
 	OnCall(obj, myInterface.doSmth, 1, 2)
 }
 
 func TestInvalidInParamTypeDeclaration(t *testing.T) {
 	defer expectPanic(t)
-
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj{m}
-
+	obj := &myObj{New(t)}
 	OnCall(obj, myInterface.doSmth, "int expected")
 }
 
@@ -311,11 +259,10 @@ func TestNonObjFuncDeclaration(t *testing.T) {
 }
 
 func TestInParansConversions(t *testing.T) {
-	tm := new(tmock)
-	m := New(tm)
-	obj := &myObj2{m}
+	obj := &myObj2{New(t)}
 
 	OnCall(obj, myInterface2.doSmth3, 1)
+	obj.doSmth3(1)
 }
 
 func expectPanic(t *testing.T) {

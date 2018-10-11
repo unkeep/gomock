@@ -223,8 +223,12 @@ func validateCall(obj interface{}, f interface{}, args []interface{}, optionalAr
 	}
 
 	for i, arg := range args {
-		if err := validateFuncParam(fType.In(i+1), arg); err != nil {
+		paramType := fType.In(i + 1)
+		if err := validateFuncParam(paramType, arg); err != nil {
 			panic(fmt.Sprintf(`Invalid "%s" in parameters: %s`, fName(f), err.Error()))
+		}
+		if paramType != reflect.TypeOf(arg) && reflect.TypeOf(arg).ConvertibleTo(paramType) {
+			args[i] = reflect.ValueOf(arg).Convert(paramType).Interface()
 		}
 	}
 }
