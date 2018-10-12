@@ -1,5 +1,7 @@
 # gomock
 [![GoDoc](https://godoc.org/github.com/unkeep/gomock?status.svg)](https://godoc.org/github.com/unkeep/gomock)
+[![Build Status](https://travis-ci.org/unkeep/gomock.svg?branch=master)](https://travis-ci.org/unkeep/gomock)
+[![codecov.io Code Coverage](https://img.shields.io/codecov/c/github/unkeep/gomock.svg?maxAge=2592000)](https://codecov.io/github/unkeep/gomock?branch=master)
 
 *gomock* is golang mocking framework which provides a fast way of implementing light and flexible mock objects. It will help you to make your tests more useful and readable!
 
