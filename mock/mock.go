@@ -65,7 +65,6 @@ type core struct {
 	t        TestingT
 	calls    []*callDeclaration
 	expCalls []*expectedCallDeclaration
-	counter  int
 }
 
 type callDeclaration struct {
