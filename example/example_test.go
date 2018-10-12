@@ -1,4 +1,4 @@
-package mockexample
+package example
 
 import (
 	"fmt"
@@ -8,14 +8,14 @@ import (
 	"github.com/unkeep/gomock/mock"
 )
 
-// storage the interface we will mock
-type storage interface {
+// Storage the interface we will mock
+type Storage interface {
 	GetValue(key string) (int, error)
 	SetValue(key string, value int) error
 }
 
-// incrementValue the function we will test
-func incrementValue(key string, st storage) (int, error) {
+// IncrementValue the function we will test
+func IncrementValue(key string, st Storage) (int, error) {
 	val, err := st.GetValue(key)
 	if err != nil {
 		return 0, err
@@ -36,45 +36,45 @@ type mockStorage struct {
 }
 
 func (m *mockStorage) GetValue(key string) (val int, err error) {
-	mock.Call(m, storage.GetValue, key).Return(&val, &err)
+	mock.Call(m, Storage.GetValue, key).Return(&val, &err)
 	return
 }
 
 func (m *mockStorage) SetValue(key string, value int) (err error) {
-	mock.Call(m, storage.SetValue, key, value).Return(&err)
+	mock.Call(m, Storage.SetValue, key, value).Return(&err)
 	return
 }
 
 // testIncrementValue a test of incrementValue function with using mocked storage interface
-func testIncrementValue(t *testing.T) {
+func TestIncrementValue(t *testing.T) {
 	cases := []struct {
 		name      string
-		setupMock func(storage)
+		setupMock func(Storage)
 		in        string
 		out       int
 		outErr    error
 	}{
 		{
 			name: "success_scenario",
-			setupMock: func(st storage) {
-				mock.ExpectCall(st, storage.GetValue, "key").Return(123, nil)
-				mock.ExpectCall(st, storage.SetValue, "key", 124)
+			setupMock: func(st Storage) {
+				mock.ExpectCall(st, Storage.GetValue, "key").Return(123, nil)
+				mock.ExpectCall(st, Storage.SetValue, "key", 124)
 			},
 			in:  "key",
 			out: 124,
 		},
 		{
 			name: "on_GetValue_error",
-			setupMock: func(st storage) {
-				mock.ExpectCall(st, storage.GetValue).Return(0, fmt.Errorf("Error"))
+			setupMock: func(st Storage) {
+				mock.ExpectCall(st, Storage.GetValue).Return(0, fmt.Errorf("Error"))
 			},
 			outErr: fmt.Errorf("Error"),
 		},
 		{
 			name: "on_SetValue_error",
-			setupMock: func(st storage) {
-				mock.ExpectCall(st, storage.GetValue)
-				mock.ExpectCall(st, storage.SetValue).Return(fmt.Errorf("Error"))
+			setupMock: func(st Storage) {
+				mock.ExpectCall(st, Storage.GetValue)
+				mock.ExpectCall(st, Storage.SetValue).Return(fmt.Errorf("Error"))
 			},
 			outErr: fmt.Errorf("Error"),
 		},
@@ -85,7 +85,7 @@ func testIncrementValue(t *testing.T) {
 			mockCore := mock.New(t)
 			st := &mockStorage{mockCore}
 			c.setupMock(st)
-			newVal, err := incrementValue(c.in, st)
+			newVal, err := IncrementValue(c.in, st)
 
 			if !reflect.DeepEqual(err, c.outErr) {
 				t.Fatalf(`Error expected: "%v", got "%v"`, c.outErr, err)
@@ -98,7 +98,4 @@ func testIncrementValue(t *testing.T) {
 			mockCore.CheckExpectations()
 		})
 	}
-}
-
-func Example() {
 }
