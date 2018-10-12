@@ -4,6 +4,8 @@
 //
 // The mock package - core package. Contains types and functions for implementing/setup mock objects.
 //
+// The mockexample package - example package.
+//
 // The gomock tool - commandline tool, generates and outputs a mock object from an interface.
 package main
 
@@ -11,4 +13,6 @@ package main
 import (
 	// mock package
 	_ "github.com/unkeep/gomock/mock"
+	// mockexample package
+	_ "github.com/unkeep/gomock/mockexample"
 )
