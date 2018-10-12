@@ -1,4 +1,4 @@
-package mock_example
+package main
 
 import (
 	"fmt"
@@ -8,7 +8,45 @@ import (
 	"github.com/unkeep/gomock/mock"
 )
 
-func TestIncrementValue(t *testing.T) {
+// storage the interface we will mock
+type storage interface {
+	GetValue(key string) (int, error)
+	SetValue(key string, value int) error
+}
+
+// incrementValue the function we will test
+func incrementValue(key string, st storage) (int, error) {
+	val, err := st.GetValue(key)
+	if err != nil {
+		return 0, err
+	}
+
+	val++
+
+	if err := st.SetValue(key, val); err != nil {
+		return 0, err
+	}
+
+	return val, nil
+}
+
+// mockStorage the Storage mock. You can implement it yourself or using gomock help tool
+type mockStorage struct {
+	mock.Core
+}
+
+func (m *mockStorage) GetValue(key string) (val int, err error) {
+	mock.Call(m, storage.GetValue, key).Return(&val, &err)
+	return
+}
+
+func (m *mockStorage) SetValue(key string, value int) (err error) {
+	mock.Call(m, storage.SetValue, key, value).Return(&err)
+	return
+}
+
+// testIncrementValue a test of incrementValue function with using mocked storage interface
+func testIncrementValue(t *testing.T) {
 	cases := []struct {
 		name      string
 		setupMock func(storage)
@@ -45,7 +83,7 @@ func TestIncrementValue(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			mockCore := mock.New(t)
-			st := &storageMock{mockCore}
+			st := &mockStorage{mockCore}
 			c.setupMock(st)
 			newVal, err := incrementValue(c.in, st)
 
@@ -60,4 +98,7 @@ func TestIncrementValue(t *testing.T) {
 			mockCore.CheckExpectations()
 		})
 	}
+}
+
+func Example() {
 }

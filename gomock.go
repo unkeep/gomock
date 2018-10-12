@@ -1,4 +1,3 @@
-// impl generates method stubs for implementing an interface.
 package main
 
 import (
@@ -18,8 +17,6 @@ import (
 	"text/template"
 
 	"golang.org/x/tools/imports"
-	// mock pkg
-	_ "github.com/unkeep/gomock/mock"
 )
 
 const usage = `gomock <iface>
