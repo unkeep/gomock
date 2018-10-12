@@ -19,7 +19,7 @@ Usage:
 
 Suggest you have an interface
 
-```
+```golang
 type Storage interface {
 	GetValue(key string) (int, error)
 	SetValue(key string, value int) error
@@ -28,7 +28,7 @@ type Storage interface {
 
 And function you would like to test that depends on this interface
 
-```
+```golang
 func IncrementValue(key string, st Storage) (int, error) {
 	val, err := st.GetValue(key)
 	if err != nil {
@@ -44,7 +44,7 @@ func IncrementValue(key string, st Storage) (int, error) {
 
 You can declare a mock implementation by yourself or generate it by gomock tool
 
-```
+```golang
  type mockStorage struct {
  	mock.Core
  }
@@ -62,7 +62,7 @@ You can declare a mock implementation by yourself or generate it by gomock tool
 
 The test of IncrementValue can be like that
 
-```
+```golang
 func TestIncrementValue(t *testing.T) {
 	cases := []struct {
 		name      string
