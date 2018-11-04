@@ -76,10 +76,11 @@ type callDeclaration struct {
 
 type expectedCallDeclaration struct {
 	callDeclaration
-	used bool
+	used bool // TODO: make thread safe
 }
 
 func (cd *callDeclaration) satisfied(obj interface{}, fID funcIdentity, args []interface{}) bool {
+	fmt.Printf("dec: %v, call: %v", cd.args, args)
 	return cd.obj == obj &&
 		reflect.DeepEqual(cd.fID, fID) &&
 		(cd.args == nil || reflect.DeepEqual(cd.args, args))
@@ -89,18 +90,53 @@ type call struct {
 	decl *callDeclaration
 }
 
+func adaptArgs(args []interface{}, f interface{}) {
+	fType := reflect.TypeOf(f)
+
+	for i, arg := range args {
+		argType := reflect.TypeOf(arg)
+		fArgType := fType.In(i + 1)
+		if argType == fArgType {
+			continue
+		}
+
+		if arg == nil {
+			args[i] = reflect.Zero(fArgType).Interface()
+			continue
+		}
+
+		if reflect.TypeOf(arg).ConvertibleTo(fArgType) {
+			args[i] = reflect.ValueOf(arg).Convert(fArgType).Interface()
+		}
+	}
+}
+
 func (c *core) onCall(obj interface{}, f interface{}, args ...interface{}) Returner {
 	validateCall(obj, f, args, true)
-	cd := &callDeclaration{obj: obj, fID: getFuncID(f), args: args}
+	if args != nil {
+		adaptArgs(args, f)
+	}
+	cd := &callDeclaration{
+		obj:  obj,
+		fID:  getFuncID(f),
+		args: args,
+	}
 	c.calls = append(c.calls, cd)
 	return cd
 }
 
 func (c *core) expectCall(obj interface{}, f interface{}, args ...interface{}) Returner {
 	validateCall(obj, f, args, true)
+	if args != nil {
+		adaptArgs(args, f)
+	}
 	ecd := &expectedCallDeclaration{
-		callDeclaration{obj: obj, fID: getFuncID(f), args: args},
-		false,
+		callDeclaration: callDeclaration{
+			obj:  obj,
+			fID:  getFuncID(f),
+			args: args,
+		},
+		used: false,
 	}
 	c.expCalls = append(c.expCalls, ecd)
 	return ecd
@@ -163,7 +199,9 @@ func (cd *callDeclaration) Return(out ...interface{}) {
 
 func validateFuncParam(paramType reflect.Type, paramValue interface{}) error {
 	if paramValue == nil {
-		if paramType.Kind() == reflect.Ptr || paramType.Kind() == reflect.Interface {
+		if paramType.Kind() == reflect.Ptr ||
+			paramType.Kind() == reflect.Interface ||
+			paramType.Kind() == reflect.Slice {
 			return nil
 		}
 
@@ -225,9 +263,6 @@ func validateCall(obj interface{}, f interface{}, args []interface{}, optionalAr
 		paramType := fType.In(i + 1)
 		if err := validateFuncParam(paramType, arg); err != nil {
 			panic(fmt.Sprintf(`Invalid "%s" in parameters: %s`, fName(f), err.Error()))
-		}
-		if paramType != reflect.TypeOf(arg) && reflect.TypeOf(arg).ConvertibleTo(paramType) {
-			args[i] = reflect.ValueOf(arg).Convert(paramType).Interface()
 		}
 	}
 }

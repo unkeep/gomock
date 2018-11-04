@@ -13,6 +13,7 @@ type myType struct {
 type myInterface interface {
 	doSmth(int) (*myType, error)
 	doSmth2() myType
+	slice([]int) []int
 }
 
 type myObj struct {
@@ -39,6 +40,12 @@ func (obj *myObj) doSmth(arg int) (v *myType, err error) {
 
 func (obj *myObj) doSmth2() (v myType) {
 	Call(obj, myInterface.doSmth2).Return(&v)
+	return
+}
+
+func (obj *myObj) slice(in []int) (out []int) {
+	fmt.Println(in, in == nil)
+	Call(obj, myInterface.slice, in).Return(&out)
 	return
 }
 
@@ -120,7 +127,7 @@ func TestOnCallWithInvalidArgs(t *testing.T) {
 	}
 }
 
-func TestOnCallWithNillReturn(t *testing.T) {
+func TestOnCallWithNilPtrReturn(t *testing.T) {
 	obj := &myObj{New(t)}
 
 	OnCall(obj, myInterface.doSmth).Return(nil, nil)
@@ -133,6 +140,18 @@ func TestOnCallWithNillReturn(t *testing.T) {
 
 	if err != nil {
 		t.Fatal("err != nil")
+	}
+}
+
+func TestOnCallWithNilSlices(t *testing.T) {
+	obj := &myObj{New(t)}
+
+	OnCall(obj, myInterface.slice, nil).Return(nil)
+
+	out := obj.slice(nil)
+
+	if out != nil {
+		t.Fatal("out != nil")
 	}
 }
 
