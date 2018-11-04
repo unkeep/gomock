@@ -19,7 +19,7 @@ If you do not have the go command on your system, you need to [Install Go](http:
 * * *
 Usage:
 
-Suggest you have an interface
+Suppose you have an interface:
 
 ```golang
 type Storage interface {
@@ -28,7 +28,7 @@ type Storage interface {
 }
 ```
 
-And function you would like to test that depends on this interface
+And function you would like to test that depends on this interface:
 
 ```golang
 func IncrementValue(key string, st Storage) (int, error) {
@@ -44,7 +44,7 @@ func IncrementValue(key string, st Storage) (int, error) {
 }
 ```
 
-You can declare a mock implementation by yourself or generate it by gomock tool
+You can declare a mock implementation by yourself or generate it by gomock tool:
 
 ```golang
  type mockStorage struct {
@@ -62,7 +62,7 @@ You can declare a mock implementation by yourself or generate it by gomock tool
  }
 ```
 
-The test of IncrementValue can be like that
+The test of IncrementValue can look like that:
 
 ```golang
 func TestIncrementValue(t *testing.T) {
