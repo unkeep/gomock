@@ -44,7 +44,6 @@ func (obj *myObj) doSmth2() (v myType) {
 }
 
 func (obj *myObj) slice(in []int) (out []int) {
-	fmt.Println(in, in == nil)
 	Call(obj, myInterface.slice, in).Return(&out)
 	return
 }
@@ -60,7 +59,7 @@ func (t *tmock) Fatalf(format string, args ...interface{}) {
 func TestOnCallBase(t *testing.T) {
 	obj := myInterface(&myObj{New(t)})
 
-	OnCall(obj, myInterface.doSmth)
+	OnCall(obj, myInterface.doSmth, 123)
 
 	v, err := obj.doSmth(123)
 
@@ -215,73 +214,81 @@ func TestCheckExpectations(t *testing.T) {
 }
 
 func TestInvalidOutParamsCountDeclaration(t *testing.T) {
-	defer expectPanic(t)
 	obj := &myObj{New(t)}
-	OnCall(obj, myInterface.doSmth2).Return(myType{}, myType{})
+	r := OnCall(obj, myInterface.doSmth2)
+	defer expectPanic(t)
+	r.Return(myType{}, myType{})
 }
 
 func TestInvalidOutParamTypeDeclaration(t *testing.T) {
-	defer expectPanic(t)
 	obj := &myObj{New(t)}
-	OnCall(obj, myInterface.doSmth2).Return(&myType{})
+	r := OnCall(obj, myInterface.doSmth2)
+	defer expectPanic(t)
+	r.Return(&myType{})
 }
 
 func TestInvalidNilOutParamTypeDeclaration(t *testing.T) {
-	defer expectPanic(t)
 	obj := &myObj{New(t)}
-	OnCall(obj, myInterface.doSmth2).Return(nil)
+	r := OnCall(obj, myInterface.doSmth2)
+	defer expectPanic(t)
+	r.Return(nil)
 }
 
 func TestInvalidOutParamCountCall(t *testing.T) {
-	defer expectPanic(t)
 	obj := &myObj{New(t)}
 	OnCall(obj, myInterface.doSmth2).Return(myType{})
-	Call(obj, myInterface.doSmth2).Return(myType{}, myType{})
+	r := Call(obj, myInterface.doSmth2)
+	defer expectPanic(t)
+	r.Return(myType{}, myType{})
 }
 
 func TestInvalidInParamsCountDeclaration(t *testing.T) {
-	defer expectPanic(t)
 	obj := &myObj{New(t)}
+	defer expectPanic(t)
 	OnCall(obj, myInterface.doSmth, 1, 2)
 }
 
 func TestInvalidInParamTypeDeclaration(t *testing.T) {
-	defer expectPanic(t)
 	obj := &myObj{New(t)}
+	defer expectPanic(t)
 	OnCall(obj, myInterface.doSmth, "int expected")
 }
 
 func TestInvalidObjDeclaration(t *testing.T) {
 	defer expectPanic(t)
-
 	OnCall(myInterface.doSmth, myInterface.doSmth)
 }
 
 func TestInvalidObjFuncDeclaration(t *testing.T) {
-	defer expectPanic(t)
-
 	tm := new(tmock)
 	m := New(tm)
 	obj := &myObj{m}
-
+	defer expectPanic(t)
 	OnCall(obj, obj)
 }
 
 func TestNonObjFuncDeclaration(t *testing.T) {
-	defer expectPanic(t)
-
 	tm := new(tmock)
 	m := New(tm)
 	obj := &myObj{m}
-
+	defer expectPanic(t)
 	OnCall(obj, myInterface2.doSmth3)
 }
 
-func TestInParansConversions(t *testing.T) {
+func TestInParamsConversions(t *testing.T) {
 	obj := &myObj2{New(t)}
 
 	OnCall(obj, myInterface2.doSmth3, 1)
 	obj.doSmth3(1)
+}
+
+func TestCallWithNonPtrReturnParams(t *testing.T) {
+	obj := &myObj{New(t)}
+	OnCall(obj, myInterface.doSmth2).Return(myType{})
+	returner := Call(obj, myInterface.doSmth2)
+
+	defer expectPanic(t)
+	returner.Return(myType{})
 }
 
 func expectPanic(t *testing.T) {

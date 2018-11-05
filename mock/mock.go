@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"strings"
 )
 
 // OnCall declares that 'obj' method 'f' can be called with 'args' during the test.
@@ -56,7 +57,7 @@ type TestingT interface {
 func getCore(obj interface{}) *core {
 	objVal := reflect.ValueOf(obj)
 	if objVal.Kind() != reflect.Ptr && objVal.Kind() != reflect.Interface {
-		panic("obj must be kind of valid ptr or interface")
+		panic("obj must be kind of ptr or interface")
 	}
 	return objVal.Elem().Field(0).Interface().(*core)
 }
@@ -74,13 +75,16 @@ type callDeclaration struct {
 	out  []interface{}
 }
 
+func (cd callDeclaration) String() string {
+	return callToStr(cd.obj, cd.fID.name, cd.args)
+}
+
 type expectedCallDeclaration struct {
 	callDeclaration
 	used bool // TODO: make thread safe
 }
 
 func (cd *callDeclaration) satisfied(obj interface{}, fID funcIdentity, args []interface{}) bool {
-	fmt.Printf("dec: %v, call: %v", cd.args, args)
 	return cd.obj == obj &&
 		reflect.DeepEqual(cd.fID, fID) &&
 		(cd.args == nil || reflect.DeepEqual(cd.args, args))
@@ -105,7 +109,7 @@ func adaptArgs(args []interface{}, f interface{}) {
 			continue
 		}
 
-		if reflect.TypeOf(arg).ConvertibleTo(fArgType) {
+		if argType.ConvertibleTo(fArgType) {
 			args[i] = reflect.ValueOf(arg).Convert(fArgType).Interface()
 		}
 	}
@@ -154,7 +158,7 @@ func (c *core) call(obj interface{}, f interface{}, args ...interface{}) Returne
 		if i != 0 && !c.expCalls[i-1].used {
 			for _, exp := range c.expCalls {
 				if !exp.used {
-					c.t.Fatalf(`"%s" must be called before "%s"`, exp.fID, fID)
+					c.t.Fatalf(`%s must be called before %s`, exp, callToStr(obj, fName(f), args))
 					return &call{nil}
 				}
 			}
@@ -170,14 +174,14 @@ func (c *core) call(obj interface{}, f interface{}, args ...interface{}) Returne
 		}
 	}
 
-	c.t.Fatalf(`"%s" is called but not defined`, fID)
+	c.t.Fatalf(`%s called but not defined`, callToStr(obj, fName(f), args))
 	return &call{nil}
 }
 
 func (c *core) CheckExpectations() {
 	for _, exp := range c.expCalls {
 		if !exp.used {
-			c.t.Fatalf(`"%s" is expected but not called`, exp.fID)
+			c.t.Fatalf(`%s expected but not called`, exp)
 			return
 		}
 	}
@@ -185,12 +189,13 @@ func (c *core) CheckExpectations() {
 
 func (cd *callDeclaration) Return(out ...interface{}) {
 	if len(out) != cd.fID.fType.NumOut() {
-		panic(fmt.Sprintf(`Invalid "%s" declaration: out parameters count must be %d`, cd.fID, cd.fID.fType.NumOut()))
+		panic(fmt.Sprintf(`Invalid %s return values: count must be %d`,
+			cd.fID.name, cd.fID.fType.NumOut()))
 	}
 
 	for i, gotOut := range out {
 		if err := validateFuncParam(cd.fID.fType.Out(i), gotOut); err != nil {
-			panic(fmt.Sprintf(`Invalid "%s" out parameters declaration: %s`, cd.fID, err.Error()))
+			panic(fmt.Sprintf(`Invalid %s %d-th return value: %s`, cd.fID.name, i+1, err.Error()))
 		}
 	}
 
@@ -210,7 +215,7 @@ func validateFuncParam(paramType reflect.Type, paramValue interface{}) error {
 
 	gotParamType := reflect.TypeOf(paramValue)
 	if !gotParamType.AssignableTo(paramType) && !gotParamType.ConvertibleTo(paramType) {
-		return fmt.Errorf("Type %s is neither assignable not converible to type %s", gotParamType, paramType)
+		return fmt.Errorf("%v is neither assignable nor converible to type %s", paramValue, paramType)
 	}
 
 	return nil
@@ -222,7 +227,8 @@ func (c *call) Return(out ...interface{}) {
 	}
 
 	if len(out) != c.decl.fID.fType.NumOut() {
-		panic(fmt.Sprintf(`Invalid "%s" call: out parameters ptrs count must be %d`, c.decl.fID, c.decl.fID.fType.NumOut()))
+		panic(fmt.Sprintf(`Invalid %s call return parameters count: got %d, expected %d`,
+			c.decl, len(out), c.decl.fID.fType.NumOut()))
 	}
 
 	if c.decl.out == nil {
@@ -232,6 +238,10 @@ func (c *call) Return(out ...interface{}) {
 	for i, r := range out {
 		if c.decl.out[i] == nil {
 			continue
+		}
+
+		if reflect.TypeOf(r).Kind() != reflect.Ptr {
+			panic(fmt.Sprintf(`Invalid %s call %d-th return parameter binding. Ptr expected.`, c.decl, i+1))
 		}
 
 		retVal := reflect.ValueOf(r).Elem()
@@ -248,7 +258,7 @@ func validateCall(obj interface{}, f interface{}, args []interface{}, optionalAr
 	}
 
 	if fType.NumIn() < 1 || !objVal.Type().AssignableTo(fType.In(0)) {
-		panic("f must be an interface method of obj")
+		panic("f must be an obj interface method")
 	}
 
 	if optionalArgs && args == nil {
@@ -256,13 +266,14 @@ func validateCall(obj interface{}, f interface{}, args []interface{}, optionalAr
 	}
 
 	if fType.NumIn()-1 != len(args) {
-		panic(fmt.Sprintf(`Invalid "%s" in parameters coun. Must be %d`, fName(f), fType.NumIn()-1))
+		panic(fmt.Sprintf(`Invalid %s args count. Got %d, expected %d`,
+			fName(f), len(args), fType.NumIn()-1))
 	}
 
 	for i, arg := range args {
 		paramType := fType.In(i + 1)
 		if err := validateFuncParam(paramType, arg); err != nil {
-			panic(fmt.Sprintf(`Invalid "%s" in parameters: %s`, fName(f), err.Error()))
+			panic(fmt.Sprintf(`Invalid %s %d-th arg: %s`, fName(f), i+1, err.Error()))
 		}
 	}
 }
@@ -270,10 +281,6 @@ func validateCall(obj interface{}, f interface{}, args []interface{}, optionalAr
 type funcIdentity struct {
 	name  string
 	fType reflect.Type
-}
-
-func (fID funcIdentity) String() string {
-	return fID.name
 }
 
 func getFuncID(f interface{}) funcIdentity {
@@ -284,5 +291,20 @@ func getFuncID(f interface{}) funcIdentity {
 }
 
 func fName(f interface{}) string {
-	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+	fullName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+	tokens := strings.Split(fullName, ".")
+	return tokens[len(tokens)-1]
+}
+
+func callToStr(obj interface{}, name string, args []interface{}) string {
+	if args == nil {
+		return name
+	}
+
+	strArgs := []string{}
+	for _, arg := range args {
+		strArgs = append(strArgs, fmt.Sprint(arg))
+	}
+
+	return fmt.Sprintf("%v.%s(%s)", obj, name, strings.Join(strArgs, ", "))
 }
