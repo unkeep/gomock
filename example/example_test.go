@@ -32,7 +32,7 @@ func IncrementValue(key string, st Storage) (int, error) {
 
 // mockStorage the Storage mock. You can implement it yourself or using gomock help tool
 type mockStorage struct {
-	mock.Core
+	mock.M
 }
 
 func (m *mockStorage) GetValue(key string) (val int, err error) {
@@ -82,8 +82,8 @@ func TestIncrementValue(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			mockCore := mock.New(t)
-			st := &mockStorage{mockCore}
+			m := mock.New(t)
+			st := &mockStorage{m}
 			c.setupMock(st)
 			newVal, err := IncrementValue(c.in, st)
 
@@ -95,7 +95,7 @@ func TestIncrementValue(t *testing.T) {
 				t.Fatalf(`Value expected: "%d", got: "%d"`, c.out, newVal)
 			}
 
-			mockCore.CheckExpectations()
+			m.CheckExpectations()
 		})
 	}
 }

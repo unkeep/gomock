@@ -6,7 +6,6 @@
 *gomock* is golang mocking framework which provides a fast way of implementing light and flexible mock objects. It will help you to make your tests more useful and readable!
 
 * _mock_ - core package. Contains types and functions for implementing/setup mock objects
-* _example_ - an example of usage mock package.
 * _gomock_ - commandline tool, generates mock objects from interface
 
 Download:
@@ -48,7 +47,7 @@ You can declare a mock implementation by yourself or generate it by gomock tool:
 
 ```golang
  type mockStorage struct {
- 	mock.Core
+ 	mock.M
  }
 
  func (m *mockStorage) GetValue(key string) (val int, err error) {
@@ -101,8 +100,8 @@ func TestIncrementValue(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			mockCore := mock.New(t)
-			st := &mockStorage{mockCore}
+			m := mock.New(t)
+			st := &mockStorage{m}
 			c.setupMock(st)
 			newVal, err := IncrementValue(c.in, st)
 
@@ -114,7 +113,7 @@ func TestIncrementValue(t *testing.T) {
 				t.Fatalf(`Value expected: "%d", got: "%d"`, c.out, newVal)
 			}
 
-			mockCore.CheckExpectations()
+			m.CheckExpectations()
 		})
 	}
 }

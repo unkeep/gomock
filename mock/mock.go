@@ -37,15 +37,15 @@ type Returner interface {
 	Return(out ...interface{})
 }
 
-// Core is the mocking engine. Declare it as first unnamed member of your mock structure.
+// M is the mocking engine. Declare it as first unnamed member of your mock structure.
 // CheckExpectations should be called at the end of the test case. It checks that earlier
 // declared via ExpectCall methods are realy called during the test
-type Core interface {
+type M interface {
 	CheckExpectations()
 }
 
-// New creates mock.Core for the given *testing.T
-func New(t TestingT) Core {
+// New creates mock.M for the given *testing.T
+func New(t TestingT) M {
 	return &core{t: t}
 }
 

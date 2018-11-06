@@ -28,7 +28,7 @@
 //
 // You can declare a mock implementation by yourself or generate it by gomock tool
 //  type mockStorage struct {
-//  	mock.Core
+//  	mock.M
 //  }
 //
 //  func (m *mockStorage) GetValue(key string) (val int, err error) {
@@ -78,8 +78,8 @@
 //
 //  	for _, c := range cases {
 //  		t.Run(c.name, func(t *testing.T) {
-//  			mockCore := mock.New(t)
-//  			st := &mockStorage{mockCore}
+//  			m := mock.New(t)
+//  			st := &mockStorage{m}
 //  			c.setupMock(st)
 //  			newVal, err := IncrementValue(c.in, st)
 //
@@ -91,7 +91,7 @@
 //  				t.Fatalf(`Value expected: "%d", got: "%d"`, c.out, newVal)
 //  			}
 //
-//  			mockCore.CheckExpectations()
+//  			m.CheckExpectations()
 //  		})
 //  	}
 //  }

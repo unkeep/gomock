@@ -17,7 +17,7 @@ type myInterface interface {
 }
 
 type myObj struct {
-	Core
+	M
 }
 
 type myInterface2 interface {
@@ -25,7 +25,7 @@ type myInterface2 interface {
 }
 
 type myObj2 struct {
-	Core
+	M
 }
 
 func (obj *myObj2) doSmth3(arg int64) (v *myType, err error) {

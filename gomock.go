@@ -265,7 +265,7 @@ func funcs(iface string, srcDir string) ([]Func, error) {
 
 const mockTmplStr = `
 type mock{{.Iface}} struct {
-	mock.Core
+	mock.M
 }
 {{ $data := .}}
 {{range .Methods}}
